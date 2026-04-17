@@ -8,29 +8,25 @@ from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
 
-
 class RAGDocumentTool:
-    def __init__(self, docs_dir: str, index_path: str = "faiss.index"):
-        # 1. Chargement de la clé API via le .env
+    def __init__(self, docs_dir: str, index_name: str = "default"):
         load_dotenv()
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
-            raise ValueError("❌ Clé OPENAI_API_KEY manquante dans le fichier .env")
+            raise ValueError("❌ Clé OPENAI_API_KEY manquante.")
         
         openai.api_key = self.api_key
         
-        # 2. Configuration des modèles (Correction : GPT-4o-mini inclus)
-        self.embed_model = "text-embedding-3-small"
-        self.chat_model = "gpt-4o-mini" 
-        
-        # 3. Paramètres techniques
+        # Chemins basés sur le nom de l'index pour éviter les collisions
         self.docs_dir = Path(docs_dir)
-        self.index_path = index_path
-        self.meta_path = index_path + ".meta.json"
+        self.index_path = f"{index_name}.index"
+        self.meta_path = f"{index_name}.meta.json"
+        
+        self.embed_model = "text-embedding-3-small"
         self.chunk_size = 800
         self.chunk_overlap = 150
         
-        # 4. Initialisation automatique du store au démarrage
+        # Initialisation du store
         self.index, self.chunks = self._prepare_store()
 
     def _read_pdf_text(self, path: Path) -> str:
@@ -38,8 +34,7 @@ class RAGDocumentTool:
             reader = PdfReader(str(path))
             return "\n".join(page.extract_text() or "" for page in reader.pages)
         except Exception as e:
-            print(f"⚠️ Erreur lecture PDF {path.name}: {e}")
-            return ""
+            return f"Erreur PDF {path.name}: {e}"
 
     def _load_and_split(self) -> list[str]:
         splitter = RecursiveCharacterTextSplitter(
@@ -61,21 +56,15 @@ class RAGDocumentTool:
         return [d.embedding for d in res.data]
 
     def _prepare_store(self):
-        # Vérifie si l'index existe déjà pour gagner du temps
         if Path(self.index_path).exists() and Path(self.meta_path).exists():
-            print("✓ Chargement de l'index FAISS existant...")
             index = faiss.read_index(self.index_path)
             chunks = json.loads(Path(self.meta_path).read_text())
             return index, chunks
 
-        print("⏳ Construction de l'index (cela peut prendre du temps)...")
         chunks = self._load_and_split()
-        if not chunks:
-            print("❌ Aucun document trouvé !")
-            return None, []
+        if not chunks: return None, []
         
         all_vectors = []
-        # Envoi par paquets de 128 pour l'efficacité
         for i in range(0, len(chunks), 128):
             all_vectors.extend(self._embed(chunks[i : i + 128]))
         
@@ -83,29 +72,44 @@ class RAGDocumentTool:
         index = faiss.IndexFlatL2(mat.shape[1])
         index.add(mat)
         
-        # Sauvegarde sur le disque
         faiss.write_index(index, self.index_path)
         Path(self.meta_path).write_text(json.dumps(chunks))
-        print(f"✅ Index créé et sauvegardé avec {len(chunks)} segments.")
         return index, chunks
 
-    def run(self, query: str, k: int = 4) -> str:
-        """
-        Recherche dans le fichier data selon la catégorie.
-        """
-        if not self.index:
-            return "Désolé, la base documentaire est vide."
+    # --- LES DEUX MÉTHODES DE SORTIE POUR TES AGENTS ---
 
-        # 1. Transformer la question en vecteur
+    def run_theory_search(self, query: str) -> str:
+        """
+        Recherche des concepts théoriques, définitions et explications 
+        sur le Machine Learning et Deep Learning dans les cours.
+        Utile pour répondre aux questions conceptuelles (ex: "C'est quoi...").
+        """
+        return self._execute_search(query, k=5)
+
+    def run_math_search(self, query: str) -> str:
+        """
+        Recherche des formules mathématiques, équations LaTeX et 
+        notations statistiques spécifiques au Deep Learning.
+        Utile pour les calculs, les fonctions de perte ou les démonstrations.
+        """
+        return self._execute_search(query, k=3)
+
+    def _execute_search(self, query: str, k: int) -> str:
+        if not self.index: return "Base vide."
         q_vec = np.asarray(self._embed([query])[0], dtype=np.float32).reshape(1, -1)
-        
-        # 2. Rechercher les morceaux les plus proches
         _, idxs = self.index.search(q_vec, k)
         retrieved_chunks = [self.chunks[i] for i in idxs[0]]
-        
-        # 3. Retourner le texte brut (l'agent s'occupera de répondre)
-        return "\n\n--- DOCUMENT SOURCE ---\n".join(retrieved_chunks)
+        return "\n\n--- EXTRAIT DU COURS ---\n".join(retrieved_chunks)
 
+# --- CRÉATION DES INSTANCES POUR TES AGENTS ---
+
+# Instance 1 : Spécialisée dans les cours de ML (Concepts)
+theory_engine = RAGDocumentTool(docs_dir="./data/theory", index_name="ml_theory")
+
+# Instance 2 : Spécialisée dans les cours de Stats/Math (Formules)
+math_engine = RAGDocumentTool(docs_dir="./data/stats", index_name="ml_math")
+
+#############  #################
 # --- BLOC DE TEST (NON INDENTÉ) ---
 if __name__ == "__main__":
     # Remplace par ton chemin réel
