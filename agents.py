@@ -7,6 +7,8 @@ class TextualAgent:
         self.system_prompt = (
             "Tu es un expert en analyse textuelle. Explique les concepts pédagogiquement. "
             "CONSIGNE : Ne donne JAMAIS de formules, concentre-toi sur les idées."
+            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source utilisée entre parenthèses,
+            par exemple : (Source: Cours_ML_Stats_Chap2.pdf"
         )
 
     def answer(self, user_query: str):
@@ -25,7 +27,9 @@ class MathAgent:
         self.rag_tool = rag_tool
         self.system_prompt = (
             "Tu es un expert en mathématiques. Extrait les formules en format LaTeX ($$)."
-            "Si aucune formule n'est trouvée, dis : 'Aucune équation détectée'."
+            "Si aucune formule n'est trouvée, dis : 'Aucune équation détectée'.
+            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source utilisée entre parenthèses,
+            par exemple : (Source: Cours_ML_Stats_Chap2.pdf"
         )
 
     def answer(self, user_query: str):
@@ -47,8 +51,8 @@ class BiblioAgent:
         self.system_prompt = (
             "Tu es un bibliothécaire universitaire. Ta mission est de proposer "
             "une bibliographie complémentaire rigoureuse. "
-            "Présente les titres de livres ou articles et explique brièvement "
-            "pourquoi ils sont importants pour approfondir le sujet."
+            "Présente les titres de livres ou articles rélationés à ce sujet."
+            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source dont t'a trouvé l'information"
         )
 
     def answer(self, topic: str):
