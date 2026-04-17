@@ -11,12 +11,12 @@ class TextualAgent:
             "Ta mission est d'expliquer les concepts de manière claire et concise. "
             "Utilise EXCLUSIVEMENT le contexte fourni pour répondre. "
             "Si l'information est absente, dis-le simplement. "
-            "Ne donne JAMAIS de formules mathématiques complexes, concentre-toi sur les idées."
+            "Ne donne JAMAIS de formules mathématiques complexes, concentre-toi sur les idées!."
         )
 
     def answer(self, user_query: str):
         # 1. L'agent utilise l'outil pour récupérer la matière première (le texte brut)
-        context = self.rag_tool.run(user_query)
+        context = self.rag_tool.run(user_query) 
 
         # 2. L'agent traite l'information avec son propre "cerveau"
         messages = [
