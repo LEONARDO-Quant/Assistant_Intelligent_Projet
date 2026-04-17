@@ -91,8 +91,7 @@ class RAGDocumentTool:
 
     def run(self, query: str, k: int = 4) -> str:
         """
-        Recherche des explications théoriques, des définitions et des concepts de Machine Learning et Deep Learning. 
-        À utiliser pour répondre aux questions de type "C'est quoi ?" ou "Expliquez le fonctionnement de...".
+        Recherche dans le fichier data selon la catégorie.
         """
         if not self.index:
             return "Désolé, la base documentaire est vide."
