@@ -1,28 +1,44 @@
+import streamlit as st
 from rag_tool import RAGDocumentTool
-from agent_textuel import TextualAgent
-from agent_formules import MathAgent
-from agent_biblio import BiblioAgent # Nouveau !
+from agents import TextualAgent, MathAgent, BiblioAgent, MasterAgent
 
-# Initialisation
-shared_rag = RAGDocumentTool(docs_dir=r"C:\Users\...\Data")
-tuteur_texte = TextualAgent(shared_rag)
-expert_math = MathAgent(shared_rag)
-bibliothécaire = BiblioAgent() # Lui n'a pas besoin du RAG, il a le Web !
+class MasterAgent:
+    def __init__(self, textual_agent, math_agent, biblio_agent):
+        self.textual_agent = textual_agent
+        self.math_agent = math_agent
+        self.biblio_agent = biblio_agent
+        self.model = "gpt-4o-mini"
 
-def interroger_tout_le_monde(question):
-    print(f"\n--- ANALYSE COMPLÈTE : {question} ---")
-    
-    # 1. Le cours (RAG)
-    print("\n[CONTENU DU COURS]")
-    print(tuteur_texte.answer(question))
-    
-    # 2. Les maths (RAG)
-    print("\n[FORMULES]")
-    print(expert_math.answer(question))
-    
-    # 3. Au-delà du cours (WEB)
-    print("\n[POUR ALLER PLUS LOIN - BIBLIOGRAPHIE]")
-    print(bibliothécaire.answer(question))
+    def process_request(self, user_query: str):
+        """
+        Le Maître analyse la requête et délègue aux spécialistes.
+        """
+        # 1. Étape de décision (Routing)
+        decision_prompt = (
+            "Analyse la requête utilisateur et détermine quels experts appeler. "
+            "Réponds uniquement en JSON avec les clés 'besoin_theorie', 'besoin_math', 'besoin_biblio' (booléens)."
+        )
+        
+        # Simulation d'un appel au LLM pour le routage (plus simple pour ton Streamlit)
+        # Ici on pourrait faire un appel GPT pour décider, ou simplement déléguer systématiquement.
+        
+        # 2. Délégation (On peut appeler plusieurs agents si la question est mixte)
+        final_report = ""
+        
+        if "formule" in user_query.lower() or "calcul" in user_query.lower():
+            final_report += f"### 🧮 Analyse Mathématique\n{self.math_agent.answer(user_query)}\n\n"
+        
+        if "explique" in user_query.lower() or "c'est quoi" in user_query.lower():
+            final_report += f"### 📚 Explication Théorique\n{self.textual_agent.answer(user_query)}\n\n"
+            
+        if "livre" in user_query.lower() or "source" in user_query.lower():
+            final_report += f"### 📖 Bibliographie\n{self.biblio_agent.answer(user_query)}\n\n"
+
+        if not final_report:
+            # Par défaut, on demande au théoricien
+            final_report = self.textual_agent.answer(user_query)
+
+        return final_report
 
 
 
