@@ -1,5 +1,6 @@
 
 import openai
+from web_tool import WebSearchTool
 
 class TextualAgent:
     def __init__(self, rag_tool):
@@ -7,8 +8,7 @@ class TextualAgent:
         self.system_prompt = (
             "Tu es un expert en analyse textuelle. Explique les concepts pédagogiquement. "
             "CONSIGNE : Ne donne JAMAIS de formules, concentre-toi sur les idées."
-            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source utilisée entre parenthèses,
-            par exemple : (Source: Cours_ML_Stats_Chap2.pdf"
+            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source utilisée entre parenthèses, par exemple : (Source: Cours_ML_Stats_Chap2.pdf"
         )
 
     def answer(self, user_query: str):
@@ -27,9 +27,8 @@ class MathAgent:
         self.rag_tool = rag_tool
         self.system_prompt = (
             "Tu es un expert en mathématiques. Extrait les formules en format LaTeX ($$)."
-            "Si aucune formule n'est trouvée, dis : 'Aucune équation détectée'.
-            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source utilisée entre parenthèses,
-            par exemple : (Source: Cours_ML_Stats_Chap2.pdf"
+            "Si aucune formule n'est trouvée, dis : 'Aucune équation détectée'."
+            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source utilisée entre parenthèses, par exemple : (Source: Cours_ML_Stats_Chap2.pdf"
         )
 
     def answer(self, user_query: str):

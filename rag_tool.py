@@ -53,9 +53,30 @@ class RAGDocumentTool:
                     })
         return docs_data
 
-    def _embed(self, texts: list[str]) -> list[list[float]]:
-        res = openai.embeddings.create(model=self.embed_model, input=texts)
-        return [d.embedding for d in res.data]
+    
+    def _embed(self, docs: list) -> list[list[float]]:
+            # 1. Extraction robuste du texte
+            texts = []
+            for doc in docs:
+                if isinstance(doc, dict):
+                    # Si c'est un dictionnaire, on prend la clé "text"
+                    texts.append(doc.get("text", ""))
+                else:
+                    # Si c'est déjà une string (cas de la requête utilisateur)
+                    texts.append(str(doc))
+
+            # 2. Nettoyage (ta logique : pas de None, pas de vide)
+            cleaned_texts = [str(t) for t in texts if t is not None and str(t).strip() != ""]
+            
+            if not cleaned_texts:
+                return []
+
+            # 3. Appel à l'API OpenAI
+            res = openai.embeddings.create(
+                model=self.embed_model, 
+                input=cleaned_texts
+            )
+            return [e.embedding for e in res.data]
 
     def _prepare_store(self):
         if Path(self.index_path).exists() and Path(self.meta_path).exists():
@@ -97,14 +118,36 @@ class RAGDocumentTool:
         return self._execute_search(query, k=3)
 
     def _execute_search(self, query: str, k: int) -> str:
-        results = []
-        for i in idxs[0]:
-            chunk_data = self.chunks[i] # Maintenant c'est un dictionnaire
-            # On crée une étiquette visuelle claire pour l'IA
-            formatted = f"[SOURCE: {chunk_data['source']}]\nCONTENU: {chunk_data['text']}"
-            results.append(formatted)
-        
-        return "\n\n---\n\n".join(results)
+            # 1. Convertir la requête textuelle en vecteur via _embed
+            # On passe [query] car _embed attend une liste
+            query_vector = self._embed([query])
+            
+            if not query_vector:
+                return "Erreur : Impossible de générer l'embedding pour la recherche."
+            
+            # 2. Convertir en format float32 pour FAISS
+            query_np = np.array(query_vector).astype('float32')
+            
+            # 3. Rechercher dans l'index FAISS
+            # D = distances, idxs = indices des chunks trouvés
+            D, idxs = self.index.search(query_np, k)
+            
+            results = []
+            # 4. Boucler sur les indices récupérés (idxs[0] car une seule requête)
+            for i in idxs[0]:
+                # Vérifier que l'indice est valide et existe dans nos chunks
+                if i != -1 and i < len(self.chunks):
+                    chunk_data = self.chunks[i] 
+                    
+                    # Formatage précis pour donner du contexte à l'IA
+                    formatted = f"[SOURCE: {chunk_data['source']}]\nCONTENU: {chunk_data['text']}"
+                    results.append(formatted)
+            
+            # 5. Retourner le contexte final ou un message d'absence
+            if not results:
+                return "Aucun document pertinent trouvé dans la base de connaissances."
+                
+            return "\n\n---\n\n".join(results)
 
 # --- CRÉATION DES INSTANCES POUR TES AGENTS ---
 

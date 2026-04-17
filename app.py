@@ -1,6 +1,7 @@
 import streamlit as st
 import time
-from agents import MasterAgent, TextualAgent, MathAgent, BiblioAgent
+from agents import TextualAgent, MathAgent, BiblioAgent
+from agent_orchestrateur import MasterAgent
 from rag_tool import RAGDocumentTool
 
 # --- CONFIGURATION DE LA PAGE ---

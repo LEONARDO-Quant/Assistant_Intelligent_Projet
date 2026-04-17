@@ -1,6 +1,6 @@
 
 from rag_tool import RAGDocumentTool
-from agents import TextualAgent, MathAgent, BiblioAgent, MasterAgent
+from agents import TextualAgent, MathAgent, BiblioAgent
 
 class MasterAgent:
     def __init__(self, textual_agent, math_agent, biblio_agent):
