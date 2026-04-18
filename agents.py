@@ -1,6 +1,8 @@
 
 import openai
-from web_tool import WebSearchTool
+from web_tool import WebSearchTool, tavily_tool
+from rag_tool import theory_engine, stats_engine
+
 
 class TextualAgent:
     def __init__(self, rag_tool):
@@ -12,14 +14,14 @@ class TextualAgent:
         )
 
     def answer(self, user_query: str):
-        # CHANGEMENT : On appelle la méthode spécifique "theory"
-        context = self.rag_tool.run_theory_search(user_query) 
+        # CHANGEMENT : On appelle la méthode spécifique "theory_engine" pour le moteur de recherche de théorie
+        context = self.rag_tool.theory_engine(user_query) 
         
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": f"CONTEXTE :\n{context}\n\nQUESTION : {user_query}"}
         ]
-        response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages, temperature=0.1)
+        response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages, temperature=0.2)
         return response.choices[0].message.content
 
 class MathAgent:
@@ -32,36 +34,40 @@ class MathAgent:
         )
 
     def answer(self, user_query: str):
-        # CHANGEMENT : On appelle la méthode spécifique "math"
-        context = self.rag_tool.run_math_search(user_query)
+        # CHANGEMENT : On appelle la méthode spécifique "stats_engine" pour le moteur de recherche de statistiques
+        context = self.rag_tool.stats_engine(user_query)
 
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": f"CONTEXTE :\n{context}\n\nQUESTION : {user_query}"}
         ]
-        response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages, temperature=0.1)
+        response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages, temperature=0.2)
         return response.choices[0].message.content
 
 
-class BiblioAgent:
+
+class WebAgent:
     def __init__(self):
-        self.web_tool = WebSearchTool()
-        self.model = "gpt-4o-mini"
+        self.tool = tavily_tool  # On utilise l'outil que tu as créé
         self.system_prompt = (
-            "Tu es un bibliothécaire universitaire. Ta mission est de proposer "
-            "une bibliographie complémentaire rigoureuse. "
-            "Présente les titres de livres ou articles rélationés à ce sujet."
-            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source dont t'a trouvé l'information"
+            "Tu es un expert en recherche d'informations sur le web. "
+            "Ta mission est de synthétiser les résultats trouvés de manière claire. "
+            "RÈGLE : Cite toujours tes sources avec les liens URL fournis par l'outil."
         )
 
-    def answer(self, topic: str):
-        # 1. Recherche web
-        raw_data = self.web_tool.search_bibliographies(topic)
+    def answer(self, user_query: str):
+        # 1. L'agent utilise l'outil pour obtenir les données brutes
+        raw_results = self.tool.search(user_query)
         
-        # 2. Mise en forme par GPT
+        # 2. L'agent envoie ces données au LLM pour rédaction
         messages = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": f"Sujet: {topic}\n\nRésultats web trouvés:\n{raw_data}"}
+            {"role": "user", "content": f"RÉSULTATS DE RECHERCHE :\n{raw_results}\n\nQUESTION : {user_query}"}
         ]
-        response = openai.chat.completions.create(model=self.model, messages=messages, temperature=0.5)
+        
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=messages, 
+            temperature=0.3
+        )
         return response.choices[0].message.content
