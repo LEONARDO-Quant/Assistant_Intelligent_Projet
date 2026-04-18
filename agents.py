@@ -1,5 +1,6 @@
 
 import openai
+import re 
 from web_tool import WebSearchTool, tavily_tool
 from rag_tool import theory_engine, stats_engine
 from schema_tool import SchemaTool
@@ -12,7 +13,9 @@ class TextualAgent:
         self.system_prompt = (
             "Tu es un expert en analyse textuelle. Explique les concepts pédagogiquement. "
             "CONSIGNE : Ne donne JAMAIS de formules, concentre-toi sur les idées."
-            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source utilisée entre parenthèses, par exemple : (Trouvé sur: Cours_ML_Stats_Chap2.pdf"
+            "Si l'utilisateur demande une visualisation ou si c'est complexe, "
+            "tu peux générer un schéma Mermaid entre les balises SCHEMA_START et SCHEMA_END."
+            "RÈGLE CRUCIALE : A la fin de chaque paragraphe ou explication, cite la source utilisée entre parenthèses, par exemple : (Cours_ML_Stats_Chap2.pdf)"
         )
 
     def answer(self, user_query: str):

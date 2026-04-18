@@ -1,4 +1,6 @@
 
+from pydoc import text
+
 from rag_tool import RAGDocumentTool, theory_engine, stats_engine
 from agents import SchemaAgent, TextualAgent, MathAgent, WebAgent
 import openai
@@ -23,6 +25,7 @@ class MasterAgent:
         self.system_prompt = (
             "Tu es l'Agent Master, le cerveau d'une application multi-experts. Analyse la requête en fonction de l'historique et de la question.\n"
             "Ton rôle est d'analyser la requête de l'utilisateur et de choisir l'action appropriée :\n"
+            "Priorité absolue au CORPUS (THEORIE/MATHS). N'utilise le WEB que si l'information est absente des documents ou porte sur l'actualité\n"
             "1. Si la question porte sur des concepts théoriques ou de définition (ex: 'C'est quoi...'), utilise la THEORIE.\n"
             "2. Si la question demande des formules, des calculs ou des stats, utilise les MATHS.\n"
             "3. Si la question porte sur l'actualité ou demande des infos externes aux cours, utilise le WEB.\n"
@@ -60,57 +63,42 @@ class MasterAgent:
         if "[SCHEMA]" in decision:
             response = self.schema_agent.answer(user_query)
             self.current_schema = response
-            self.schema_history.append(response)
-            display_response = "Voici le schéma ajouté au laboratoire (colonne de droite) :"
+            display_response = "Voici le schéma généré dans l'onglet dédié"
             full_response_for_memory = response # L'IA garde le code en mémoire
 
         elif "[THEORIE]" in decision:
             response = self.text_agent.answer(user_query)
-            full_response_for_memory = response
-            # Extraction si l'agent texte a aussi généré un schéma
-            match = re.search(r"SCHEMA_START(.*?)SCHEMA_END", response, re.DOTALL)
-            if match:
-                self.current_schema = match.group(1).strip()
-                self.schema_history.append(self.current_schema)
-                display_response = response.replace(match.group(0), "").strip()
-            else:
-                display_response = response
+            display_response, full_response_for_memory = self._extract_schema_if_any(response)
+
         elif "[MATHS]" in decision:
             response = self.math_agent.answer(user_query)
-            full_response_for_memory = response
-            match = re.search(r"SCHEMA_START(.*?)SCHEMA_END", response, re.DOTALL)
-            if match:
-                self.current_schema = match.group(1).strip()
-                self.schema_history.append(self.current_schema)
-                display_response = response.replace(match.group(0), "").strip()
+            display_response, full_response_for_memory = self._extract_schema_if_any(response)
+
         elif "[WEB]" in decision:
             response = self.web_agent.answer(user_query)
-            full_response_for_memory = response
-            display_response = response     
-            if match := re.search(r"SCHEMA_START(.*?)SCHEMA_END", response, re.DOTALL):
-                self.current_schema = match.group(1).strip()
-                self.schema_history.append(self.current_schema)
-                display_response = response.replace(match.group(0), "").strip()
+            display_response, full_response_for_memory = self._extract_schema_if_any(response)
+
         else:
-            # Mode DIRECT
+            # MODE DIRECT : Pour les salutations et conversations banales
             res = openai.chat.completions.create(
                 model="gpt-4o-mini", 
-                messages=[{"role": "system", "content": "Assistant utile."}] + self.chat_history[-5:] + [{"role": "user", "content": user_query}]
+                messages=[{"role": "system", "content": "Tu es un assistant amical et intelligent."}] + context + [{"role": "user", "content": user_query}]
             )
             display_response = res.choices[0].message.content
             full_response_for_memory = display_response
 
-        if "[DIRECT]" in decision:
-            res = openai.chat.completions.create(
-                model="gpt-4o-mini", 
-                # On utilise bien le contexte ici aussi
-                messages=[{"role": "system", "content": "Assistant utile."}] + self.chat_history[-5:] + [{"role": "user", "content": user_query}]
-            )
-            display_response = res.choices[0].message.content
-            full_response_for_memory = display_response
-
-        # 3. MISE À JOUR DE LA MÉMOIRE (Contenu complet)
-        self.chat_history.append({"role": "user", "content": user_query})
-        self.chat_history.append({"role": "assistant", "content": full_response_for_memory})
-        
         return display_response
+    
+
+
+    def _extract_schema_if_any(self, text: str):
+        # On cherche un code Mermaid dans la réponse
+        mermaid_pattern = r"(graph\s+(TD|LR|mindmap)[\s\S]+)"
+        match = re.search(mermaid_pattern, text, re.IGNORECASE)
+        
+        if match:
+            schema_code = match.group(1)
+            return "Voici le schéma généré dans l'onglet dédié", schema_code
+        else:
+            return text, text  # Pas de schéma, on retourne le texte tel quel pour l'affichage et la mémoire
+
