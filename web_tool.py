@@ -5,9 +5,14 @@ from tavily import TavilyClient
 load_dotenv()  # Charge les variables d'environnement depuis le fichier .env
 
 class WebSearchTool:
-    def __init__(self, api_key="TAVILY_API_KEY", max_results=3):
+    def __init__(self, api_key=None, max_results=3):
         # Remplace par ta clé API Tavily (gratuite sur leur site)
-        self.client = TavilyClient(api_key=api_key)
+        actual_key = api_key or os.getenv("TAVILY_API_KEY")
+        
+        if not actual_key:
+            raise ValueError("❌ Clé API Tavily non trouvée. Vérifiez votre fichier .env")
+            
+        self.client = TavilyClient(api_key=actual_key)
         self.max_results = max_results
 
     def search(self, query: str):
@@ -30,15 +35,4 @@ class WebSearchTool:
         except Exception as e:
             return f"⚠️ Erreur Tavily : {str(e)}"
 
-# --- BLOC DE TEST ---
-if __name__ == "__main__":
-    # Conseil : utilise une variable d'environnement pour ta clé en prod
-    tool = WebSearchTool(api_key=os.getenv("TAVILY_API_KEY")) # Mets ta clé ici
-    
-    print("🚀 Outil de recherche Tavily prêt.")
-    while True:
-        user_input = input("\n🔎 Votre recherche : ").strip()
-        if user_input.lower() in ['q', 'exit', 'quit']:
-            break
-        if user_input:
-            print(f"\n{tool.search(user_input)}")
+tavily_tool = WebSearchTool()
