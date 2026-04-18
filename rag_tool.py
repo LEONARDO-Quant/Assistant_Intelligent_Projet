@@ -105,35 +105,6 @@ class RAGDocumentTool:
                 results.append(f"[SOURCE: {self.chunks[i]['source']}]\n{self.chunks[i]['text']}")
         return "\n\n---\n\n".join(results) if results else "Aucun résultat."
 
-# --- BLOC DE TEST AVEC CHAT ---
-
-if __name__ == "__main__":
-    # 1. Initialisation
-    print("🔄 Initialisation des moteurs...")
-    theory_engine = RAGDocumentTool(docs_dir="./data/theory", index_name="theory")
-    stats_engine = RAGDocumentTool(docs_dir="./data/stats", index_name="stats")
-    
-    engines = {
-        "1": {"name": "Théorie", "obj": theory_engine},
-        "2": {"name": "Math", "obj": stats_engine}
-    }
-    
-    selected = "1"
-    print("✅ Prêt ! Tapez '1' ou '2' pour changer de moteur, ou 'exit' pour quitter.")
-
-    # 2. Boucle de Chat
-    while True:
-        mode_name = engines[selected]["name"]
-        query = input(f"\n[{mode_name}] > ").strip()
-
-        if query.lower() in ["exit", "quit", "q"]:
-            break
-        if query in ["1", "2"]:
-            selected = query
-            print(f"🔄 Switch vers : {engines[selected]['name']}")
-            continue
-        if not query:
-            continue
-
-        print("🔍 Recherche en cours...")
-        print(f"\n{engines[selected]['obj'].run(query)}\n")
+# On crée ici les deux objets qui seront partagés
+theory_engine = RAGDocumentTool(docs_dir="./data/theory", index_name="theory")
+stats_engine = RAGDocumentTool(docs_dir="./data/stats", index_name="stats")
