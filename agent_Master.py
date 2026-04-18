@@ -32,19 +32,26 @@ class MasterAgent:
             "Consulte toujours les 5 derniers échanges pour comprendre le contexte et les pronoms (ex: 'il', 'ça', 'encore')."
         )
 
-    def answer(self, user_query: str):
+    def answer(self, user_query: str, history=None):
+        if history is not None:
+            self.chat_history = history  # Met à jour la mémoire avec l'historique fourni   
         # 1. Préparer les messages pour le routing (avec mémoire pour comprendre les 'il', 'ça', 'encore')
+        context = self.chat_history[-5:] if self.chat_history else []
         routing_messages = [{"role": "system", "content": self.system_prompt}]
         # On donne les 5 derniers échanges au router pour le contexte
-        routing_messages.extend(self.chat_history[-5:]) 
+        routing_messages.extend(context) 
         routing_messages.append({"role": "user", "content": user_query})
+
+        decision = "[DIRECT]"  # Valeur par défaut au cas où le modèle ne répond pas comme prévu
         
-        routing_res = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=routing_messages,
-            temperature=0
-        )
-        decision = routing_res.choices[0].message.content.upper()
+        try:   
+            routing_res = openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=routing_messages,
+                temperature=0
+            )
+        except Exception as e:
+            decision = "[DIRECT]"
 
         display_response = ""
         full_response_for_memory = ""
@@ -88,6 +95,15 @@ class MasterAgent:
             # Mode DIRECT
             res = openai.chat.completions.create(
                 model="gpt-4o-mini", 
+                messages=[{"role": "system", "content": "Assistant utile."}] + self.chat_history[-5:] + [{"role": "user", "content": user_query}]
+            )
+            display_response = res.choices[0].message.content
+            full_response_for_memory = display_response
+
+        if "[DIRECT]" in decision:
+            res = openai.chat.completions.create(
+                model="gpt-4o-mini", 
+                # On utilise bien le contexte ici aussi
                 messages=[{"role": "system", "content": "Assistant utile."}] + self.chat_history[-5:] + [{"role": "user", "content": user_query}]
             )
             display_response = res.choices[0].message.content

@@ -61,27 +61,22 @@ with col_chat:
     # Zone d'entrée utilisateur
     if query := st.chat_input("Posez votre question sur le ML ou les Stats..."):
         # 1. Ajouter et afficher le message utilisateur
-        st.session_state.chat_history.append({"role": "user", "content": query})
         with st.chat_message("user"):
             st.write(query)
+
+        st.session_state.chat_history.append({"role": "user", "content": query})
 
         # 2. Réponse du Master Agent
         with st.chat_message("assistant"):
             placeholder = st.empty()
             placeholder.markdown("🔍 *Le Maître consulte les experts...*")
             
-            response = st.session_state.master.answer(query)
+            response = st.session_state.master.answer(query, history=st.session_state.chat_history)
             placeholder.markdown(response)
             
-            # --- AJOUT CRUCIAL ICI ---
-            # On vérifie si le Master a généré un schéma lors de son dernier appel
-            if hasattr(st.session_state.master, 'current_schema') and st.session_state.master.current_schema:
-                st.write("---") # Petite ligne de séparation
-                tool = SchemaTool()
-                tool.render(st.session_state.master.current_schema)
-            # --------------------------
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-            st.session_state.chat_history.append({"role": "assistant", "content": response})
+        st.rerun()  # Rafraîchit la page pour afficher les nouveaux messages et les schémas si besoin
 
 
 with col_lab:
