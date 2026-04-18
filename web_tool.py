@@ -14,6 +14,10 @@ class WebSearchTool:
             
         self.client = TavilyClient(api_key=actual_key)
         self.max_results = max_results
+        self.system_prompt = (
+            "Tu es un expert en programmation et data science. "
+            "Si l'utilisateur demande un algorithme, cherche des implémentations concrètes et expliquue les variables" 
+        )
 
     def search(self, query: str):
         """Recherche via l'API Tavily et donne des réponses pertinentes."""
